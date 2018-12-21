@@ -62,6 +62,36 @@ void LR35902::BITSHIFT(u8 opcode)
  
   
 
+void LR35902::CheckCarryFlagPlusFull_16(u16&reg, u16 amount)
+{
+	if ((0xFFFF - reg  ) < amount)// overflew
+	{
+		SetFlag(H);
+	}
+}
+
+void LR35902::CheckCarryFlagPlusHalf_16(u16&reg, u16 amount)
+{
+	u8 r8 = (reg & 0xFF);
+	u8 a8 = (amount & 0xFF);
+	CheckCarryFlagPlusFull(r8, a8);
+}
+
+void LR35902::CheckCarryFlagMinusFull_16(u16&reg, u16 amount)
+{
+	if (amount>reg)
+	{
+		SetFlag(H);
+	}
+}
+
+void LR35902::CheckCarryFlagMinusHalf_16(u16&reg, u16 amount)
+{
+	u8 r8 = (reg & 0xFF);
+	u8 a8 = (amount & 0xFF);
+	CheckCarryFlagMinusFull(r8, a8);
+}
+
 void LR35902::CheckCarryFlagPlusFull(u8&reg, u8 amount)
 {
 	if ((0xFF - reg)<amount)// overflew
@@ -81,7 +111,7 @@ void LR35902::CheckCarryFlagPlusHalf(u8&reg, u8 amount)
 
 void LR35902::CheckCarryFlagMinusFull(u8&reg, u8 amount)
 {
-	if (amount<=reg)
+	if (amount>reg)
 	{
 		SetFlag(H);
 	}
@@ -89,7 +119,7 @@ void LR35902::CheckCarryFlagMinusFull(u8&reg, u8 amount)
 
 void LR35902::CheckCarryFlagMinusHalf(u8&reg, u8 amount)
 {
-	if ((amount & 0x0F) <= (reg & 0x0F)) // overflew
+	if ((amount & 0x0F) > (reg & 0x0F)) // overflew
 	{
 		SetFlag(H);
 	}
@@ -347,9 +377,54 @@ void LR35902::CPHL()
 	CP8(Memory->Read(Reg.HL.val));
 }
 
+
+void LR35902::INC16(u16&reg)
+{
+	reg++;
+}
+
+void LR35902::DEC16(u16&reg)
+{
+	reg--;
+}
+
+void LR35902::ADD16(u16 data)
+{ 
+	CheckCarryFlagPlusFull_16(Reg.HL.val, data);
+	CheckCarryFlagPlusHalf_16(Reg.HL.val, data);
+	Reg.HL.val += data;
+	ResetFlag(N);
+}
+
+void LR35902::ADDSPE8()
+{
+	Reg.PC.val++;
+	Reg.SP.val +=  (s8)Memory->Read(Reg.PC.val);
+}
+
+void LR35902::SignedCheckCarry_Full8_Add(u8&reg, s8 amount)
+{
+
+}
+
+void LR35902::SignedCheckCarry_Half8_Add(u8&reg, s8 amount)
+{
+
+}
+
+void LR35902::SignedCheckCarry_Full8_Minus(u8&reg, s8 amount)
+{
+
+}
+
+void LR35902::SignedCheckCarry_Half8_Minus(u8&reg, s8 amount)
+{
+
+}
+
 u8 LR35902::ReadImmvalue8()
 {
-	return Memory->Read(Reg.PC++);
+	return Memory->Read(Reg.PC.val++);
 }
 
 void LR35902::CB(u8 opcode)
@@ -855,18 +930,44 @@ void LR35902::LOGIC16(u8 opcode)
 	{
 		//LOGIC16
 	case INC_BC://0x03
+		INC16(Reg.BC.val);
+		break;
 	case ADD_HL_BC://0x09
+		ADD16(Reg.BC.val);
+		break;
 	case DEC_BC://0x0B
+		DEC16(Reg.BC.val);
+		break;
 	case INC_DE://0x13
-	case ADD_HL_DC://0x19
+		INC16(Reg.DE.val);
+		break;
+	case ADD_HL_DE://0x19
+		ADD16(Reg.DE.val);
+		break;
 	case DEC_DE://0x1B
+		DEC16(Reg.DE.val);
+		break;
 	case INC_HL://0x23
+		INC16(Reg.HL.val);
+		break;
 	case ADD_HL_HL://0x29
+		ADD16(Reg.HL.val);
+		break;
 	case DEC_HL://0x2B
+		DEC16(Reg.HL.val);
+		break;
 	case INC_SP://0x33
+		INC16(Reg.SP.val);
+		break;
 	case ADD_HL_SP://0x39
+		ADD16(Reg.SP.val);
+		break;
 	case DEC_SP://0x3B
-	case ADD_SP_R8://0xE8
+		DEC16(Reg.SP.val);
+		break;
+	case ADD_SP_E8://0xE8
+		ADDSPE8();
+		break;
 	default:
 		break;
 	}

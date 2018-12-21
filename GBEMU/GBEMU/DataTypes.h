@@ -5,6 +5,10 @@
 #endif
 
 
+#ifndef s8
+#define s8 signed char
+#endif
+
 #ifndef u16
 #define u16 unsigned short
 #endif

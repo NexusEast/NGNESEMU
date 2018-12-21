@@ -110,12 +110,13 @@ public:
 	u8 GetFlag(ECPUGetFlag flag);
 	void ToggleFlag(ECPUGetFlag flag);
 
-	void INCR8(u8&reg);
 
-	void DECR8(u8&reg);
 
-	 
 
+
+	// ALU 8 BIT
+	void INCR8(u8&reg); 
+	void DECR8(u8&reg); 
 	void DECRHL(u16&reg);
 	void INCRHL(u16&reg);
 /*
@@ -169,17 +170,13 @@ public:
 										; combine them for 0115.
 
 */
-	void OPDAA();
-
-	void ADD8(u8 data);
-
+	void OPDAA(); 
+	void ADD8(u8 data); 
 	void ADC8(u8 data);
 	void ADCHLP();
-	void ADDHLP();
-
+	void ADDHLP(); 
 	void SUB8(u8 data);
-	void SUBHLP();
-
+	void SUBHLP(); 
 	void SBC8(u8 data);
 	void SBCHL();
 	void AND8(u8 data);
@@ -189,9 +186,33 @@ public:
 	void OR8(u8 data);
 	void ORHL();
 	void CP8(u8 data);
-	void CPHL();
+	void CPHL(); 
 
-	u8 GetImmval8();
+	//ALU 16 BIT
+
+	//+
+	void CheckCarryFlagPlusFull_16(u16&reg, u16 amount);
+	void CheckCarryFlagPlusHalf_16(u16&reg, u16 amount);
+
+	//-
+	void CheckCarryFlagMinusFull_16(u16&reg, u16 amount);
+	void CheckCarryFlagMinusHalf_16(u16&reg, u16 amount);
+
+
+
+	void INC16(u16&reg);
+	void DEC16(u16&reg);
+	void ADD16(u16 data);
+	void ADDSPE8();
+
+	void SignedCheckCarry_Full8_Add(u8&reg, u8 amount);
+	void SignedCheckCarry_Half8_Add(u8&reg, u8 amount);
+
+	void SignedCheckCarry_Full8_Minus(u8&reg, u8 amount);
+	void SignedCheckCarry_Half8_Minus(u8&reg, u8 amount);
+
+
+	u8 ReadImmvalue8();
 };
 
 
