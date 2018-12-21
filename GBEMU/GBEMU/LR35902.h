@@ -171,11 +171,27 @@ public:
 */
 	void OPDAA();
 
-	void ADD8(u8&reg, u8 val);
+	void ADD8(u8 data);
 
+	void ADC8(u8 data);
+	void ADCHLP();
 	void ADDHLP();
 
+	void SUB8(u8 data);
+	void SUBHLP();
 
+	void SBC8(u8 data);
+	void SBCHL();
+	void AND8(u8 data);
+	void ANDHL();
+	void XOR8(u8 data);
+	void XORHL();
+	void OR8(u8 data);
+	void ORHL();
+	void CP8(u8 data);
+	void CPHL();
+
+	u8 GetImmval8();
 };
 
 

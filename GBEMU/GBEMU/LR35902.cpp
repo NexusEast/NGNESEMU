@@ -174,10 +174,10 @@ void LR35902::OPDAA()
 {
 	int correction = 0;
 	bool setFlagC = false;
-	bool h = GetFlag(GH);
-	bool c = GetFlag(GC);
-	bool n = GetFlag(GN);
-	bool z = GetFlag(GZ);
+	u8 h = GetFlag(GH);
+	u8 c = GetFlag(GC);
+	u8 n = GetFlag(GN);
+	u8 z = GetFlag(GZ);
 
 	if (h || (!h && (Reg.AF.A & 0xf) > 9)) {
 		correction |= 0x6;
@@ -211,11 +211,30 @@ void LR35902::OPDAA()
 
 }
 
-void LR35902::ADD8(u8&reg)
+void LR35902::ADD8(u8 data)
 {
-	CheckCarryFlagPlusHalf(Reg.AF.A, reg);
-	CheckCarryFlagPlusFull(Reg.AF.A, reg);
-	Reg.AF.A += reg;
+	CheckCarryFlagPlusHalf(Reg.AF.A, data);
+	CheckCarryFlagPlusFull(Reg.AF.A, data);
+	Reg.AF.A += data;
+	CheckZeroFlag(Reg.AF.A);
+	ResetFlag(N);
+}
+ 
+void LR35902::ADC8(u8 data)
+{
+	CheckCarryFlagPlusHalf(Reg.AF.A, data);
+	CheckCarryFlagPlusFull(Reg.AF.A, data);
+	Reg.AF.A += data + GetFlag(GC);
+	CheckZeroFlag(Reg.AF.A);
+	ResetFlag(N);
+}
+
+void LR35902::ADCHLP()
+{
+	u8 memval = Memory->Read(Reg.HL.val);
+	CheckCarryFlagPlusHalf(Reg.AF.A, memval);
+	CheckCarryFlagPlusFull(Reg.AF.A, memval);
+	Reg.AF.A += memval + GetFlag(GC);
 	CheckZeroFlag(Reg.AF.A);
 	ResetFlag(N);
 }
@@ -229,6 +248,108 @@ void LR35902::ADDHLP()
 	CheckZeroFlag(Reg.AF.A);
 	ResetFlag(N);
 
+}
+
+void LR35902::SUB8(u8 data)
+{
+	CheckCarryFlagMinusHalf(Reg.AF.A, data);
+	CheckCarryFlagMinusFull(Reg.AF.A, data);
+	Reg.AF.A -= data;
+	CheckZeroFlag(Reg.AF.A);
+	SetFlag(N);
+
+}
+
+void LR35902::SUBHLP()
+{
+	u8 memval = Memory->Read(Reg.HL.val);
+	CheckCarryFlagMinusHalf(Reg.AF.A, memval);
+	CheckCarryFlagMinusFull(Reg.AF.A, memval);
+	Reg.AF.A -= memval;
+	CheckZeroFlag(Reg.AF.A);
+	SetFlag(N);
+}
+
+void LR35902::SBC8(u8 data)
+{
+	CheckCarryFlagMinusHalf(Reg.AF.A, data);
+	CheckCarryFlagMinusFull(Reg.AF.A, data);
+	Reg.AF.A -= (data+GetFlag(GC));
+	CheckZeroFlag(Reg.AF.A);
+	SetFlag(N);
+}
+
+void LR35902::SBCHL()
+{
+	u8 memval = Memory->Read(Reg.HL.val);
+	CheckCarryFlagMinusHalf(Reg.AF.A, memval);
+	CheckCarryFlagMinusFull(Reg.AF.A, memval);
+	Reg.AF.A -= (memval + GetFlag(GC));
+	CheckZeroFlag(Reg.AF.A);
+	SetFlag(N);
+}
+
+void LR35902::AND8(u8 data)
+{
+	Reg.AF.A &= data; 
+	CheckZeroFlag(Reg.AF.A);
+	SetFlag(H);
+	ResetFlag(N);
+	ResetFlag(C);
+}
+
+void LR35902::ANDHL()
+{
+	AND8(Memory->Read(Reg.HL.val));
+}
+
+void LR35902::XOR8(u8 data)
+{ 
+	Reg.AF.A ^= data;
+	CheckZeroFlag(Reg.AF.A); 
+	ResetFlag(N);
+	ResetFlag(H);
+	ResetFlag(C);
+}
+
+void LR35902::XORHL()
+{
+	XOR8(Memory->Read(Reg.HL.val));
+}
+
+void LR35902::OR8(u8 data)
+{
+	Reg.AF.A |= data;
+	CheckZeroFlag(Reg.AF.A);
+	ResetFlag(N);
+	ResetFlag(H);
+	ResetFlag(C);
+}
+
+void LR35902::ORHL()
+{
+	OR8(Memory->Read(Reg.HL.val));
+}
+
+void LR35902::CP8(u8 data)
+{ 
+	CheckCarryFlagMinusHalf(Reg.AF.A, data);
+	CheckCarryFlagMinusFull(Reg.AF.A, data);
+	SetFlag(N);
+	if (Reg.AF.A == data)
+	{
+		SetFlag(Z);
+	}
+}
+
+void LR35902::CPHL()
+{
+	CP8(Memory->Read(Reg.HL.val));
+}
+
+u8 LR35902::ReadImmvalue8()
+{
+	return Memory->Read(Reg.PC++);
 }
 
 void LR35902::CB(u8 opcode)
@@ -531,70 +652,196 @@ void LR35902::LOGIC8(u8 opcode)
 		ADD8(Reg.AF.A);
 		break;
 	case ADC_A_B://0x88
+		ADC8(Reg.BC.B);
+		break;
 	case ADC_A_C://0x89
+		ADC8(Reg.BC.C);
+		break;
 	case ADC_A_D://0x8A
-	case ADC_A_E://0x8B
+		ADC8(Reg.DE.D);
+		break;
+	case ADC_A_E://
+		ADC8(Reg.DE.E);
+		break;
 	case ADC_A_H://0x8C
+		ADC8(Reg.HL.H);
+		break;
 	case ADC_A_L://0x8D
+		ADC8(Reg.HL.L);
+		break;
 	case ADC_A_HLA://0x8E
+		ADCHLP();
+		break;
 	case ADC_A_A://0x8F
+		ADC8(Reg.AF.A);
+		break;
 	case SUB_B://0x90
+		SUB8(Reg.BC.B);
+		break;
 	case SUB_C://0x91
+		SUB8(Reg.BC.C);
+			break;
 	case SUB_D://0x92
+		SUB8(Reg.DE.D);
+		break;
 	case SUB_E://0x93
+		SUB8(Reg.DE.E);
+		break;
 	case SUB_H://0x94
+		SUB8(Reg.HL.H);
+		break;
 	case SUB_L://0x95
+		SUB8(Reg.HL.L);
+		break;
 	case SUB_HLA://0x96
+		SUBHLP();
+		break;
 	case SUB_A://0x97
+		SUB8(Reg.AF.A);
+		break;
 	case SBC_A_B://0x98
+		SBC8(Reg.BC.B);
+		break;
 	case SBC_A_C://0x99
+		SBC8(Reg.BC.C);
+		break;
 	case SBC_A_D://0x9A
+		SBC8(Reg.DE.D);
+		break;
 	case SBC_A_E://0x9B
+		SBC8(Reg.DE.E);
+		break;
 	case SBC_A_H://0x9C
+		SBC8(Reg.HL.H);
+		break;
 	case SBC_A_L://0x9D
+		SBC8(Reg.HL.L);
+		break;
 	case SBC_A_HLA://0x9E
+		SBCHL();
+		break;
 	case SBC_A_A://0x9F
+		SBC8(Reg.AF.A);
+		break;
 	case AND_B://0xA0
+		AND8(Reg.BC.B);
+		break;
 	case AND_C://0xA1
+		AND8(Reg.BC.C);
+		break;
 	case AND_D://0xA2
+		AND8(Reg.DE.D);
+		break;
 	case AND_E://0xA3
+		AND8(Reg.DE.E);
+		break;
 	case AND_H://0xA4
+		AND8(Reg.HL.H);
+		break;
 	case AND_L://0xA5
+		AND8(Reg.HL.L);
+		break;
 	case AND_HLA://0xA6
+		ANDHL();
+		break;
 	case AND_A://0xA7
+		AND8(Reg.AF.A);
+		break;
 	case XOR_B://0xA8
+		XOR8(Reg.BC.B);
+		break;
 	case XOR_C://0xA9
+		XOR8(Reg.BC.C);
+		break;
 	case XOR_D://0xAA
+		XOR8(Reg.DE.D);
+		break;
 	case XOR_E://0xAB
+		XOR8(Reg.DE.E);
+		break;
 	case XOR_H://0xAC
+		XOR8(Reg.HL.H);
+		break;
 	case XOR_L://0xAD
+		XOR8(Reg.HL.L);
+		break;
 	case XOR_HLA://0xAE
+		XORHL();
+		break;
 	case XOR_A://0xAF
+		XOR8(Reg.AF.A);
+		break;
 	case OR_B://0xB0
+		OR8(Reg.BC.B);
+		break;
 	case OR_C://0xB1
+		OR8(Reg.BC.C);
+		break;
 	case OR_D://0xB2
+		OR8(Reg.DE.D);
+		break;
 	case OR_E://0xB3
+		OR8(Reg.DE.E);
+		break;
 	case OR_H://0xB4
+		OR8(Reg.HL.H);
+		break;
 	case OR_L://0xB5
+		OR8(Reg.HL.L);
+		break;
 	case OR_HLA://0xB6
+		ORHL();
+		break;
 	case OR_A://0xB7
+		OR8(Reg.AF.A);
+		break;
 	case CP_B://0xB8
+		CP8(Reg.BC.B);
+		break;
 	case CP_C://0xB9
+		CP8(Reg.BC.C);
+		break;
 	case CP_D://0xBA
+		CP8(Reg.DE.D);
+		break;
 	case CP_E://0xBB
+		CP8(Reg.DE.E);
+		break;
 	case CP_H://0xBC
+		CP8(Reg.HL.H);
+		break;
 	case CP_L://0xBD
+		CP8(Reg.HL.L);
+		break;
 	case CP_HLA://0xBE
+		CPHL();
+		break;
 	case CP_A://0xBF
+		CP8(Reg.AF.A);
+		break;
 	case ADD_A_D8://0xC6
+		ADD8(ReadImmvalue8());
+		break;
 	case ADC_A_D8://0xCE
+		ADC8(ReadImmvalue8());
+		break;
 	case SUB_D8://0xD6
+		SUB8(ReadImmvalue8());
+		break;
 	case SBC_A_D8://0xDE
+		SBC8(ReadImmvalue8());
+		break;
 	case AND_D8://0xE6
+		AND8(ReadImmvalue8());
+		break;
 	case XOR_D8://0xEE
+		XOR8(ReadImmvalue8());
+		break;
 	case OR_D8://0xF6
+		OR8(ReadImmvalue8());
+		break;
 	case CP_D8://0xFE
-
+		CP8(ReadImmvalue8());
 
 
 	default:
