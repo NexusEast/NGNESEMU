@@ -214,6 +214,21 @@ public:
 
 
 	u8 ReadImmvalue8();
+
+
+	//8BIT DATA
+	void LD_ADDR_A(u16 reg);
+	void LD_R8_R8(u8 data, u8 &reg);
+	void LD8D8(u8 &reg);
+	void LD_R16ADDR_A(u16 reg);
+	void LD_A_R16ADDR(u16 reg);
+
+	void LD_HL_P_A();
+	void LD_HL_M_A(); 
+	void LD_HLA_8(u8 reg);//store value into HL
+	void LD_HLADDR_N8();
+
+	void LD_R8_HLA(u8&reg);//Load value into register 
 };
 
 

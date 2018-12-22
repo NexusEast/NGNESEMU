@@ -5,7 +5,7 @@
 static OperandBase G_OPERANDS[0x200] = {
 	OperandBase(NOP,1,4,0,0x00,"NOP",ETC),
 	OperandBase(LD_BC,3,12,0,0x01,"LD_BC",DATA16),
-	OperandBase(LD_BD_A,1,8,0,0x02,"LD_BD_A",DATA8),
+	OperandBase(LD_BC_A,1,8,0,0x02,"LD_BD_A",DATA8),
 	OperandBase(INC_BC,1,8,0,0x03,"INC_BC",LOGIC16),
 	OperandBase(INC_B,1,4,0,0x04,"INC_B",LOGIC8),
 	OperandBase(DEC_B,1,4,0,0x05,"DEC_B",LOGIC8),

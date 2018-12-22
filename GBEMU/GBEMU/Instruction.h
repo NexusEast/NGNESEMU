@@ -21,7 +21,7 @@ enum EOperandType : u8
 enum Instruction:u16
 {
 			//x0		x1			x2				x3				x4				x5			x6				x7			x8				x9				xA				xB			xC			xD			xE				xF
-	/*0x*/	NOP,		LD_BC,		LD_BD_A,		INC_BC,			INC_B,			DEC_B,		LD_B_D8,		RLCA,		LD_A16_SP,		ADD_HL_BC,		LD_A_BC,		DEC_BC,		INC_C,		DEC_C,		LD_C_D8,		RRCA,
+	/*0x*/	NOP,		LD_BC,		LD_BC_A,		INC_BC,			INC_B,			DEC_B,		LD_B_D8,		RLCA,		LD_A16_SP,		ADD_HL_BC,		LD_A_BC,		DEC_BC,		INC_C,		DEC_C,		LD_C_D8,		RRCA,
 	/*1x*/	STOP,		LD_DE_D16,	LD_DE_A,		INC_DE,			INC_D,			DEC_D,		LD_D_D8,		RLA,		JR_R8,			ADD_HL_DE,		LD_A_DE,		DEC_DE,		INC_E,		DEC_E,		LD_E_D8,		RRA,
 	/*2x*/	JR_NZ_R8,	LD_HL_D16,	LD_HL_PLUS_A,	INC_HL,			INC_H,			DEC_H,		LD_H_D8,		DAA,		JR_Z_R8,		ADD_HL_HL,		LD_A_HLA_PLUS,	DEC_HL,		INC_L,		DEC_L,		LD_L_D8,		CPL,
 	/*3x*/	JR_NC_R8,	LD_SP_D16,	LD_HL_MNUS_A,	INC_SP,			INC_HLA,		DEC_HLA,	LD_HLA_D8,		SCF,		JR_C_R8,		ADD_HL_SP,		LD_A_HLA_MNUS,	DEC_SP,		INC_A,		DEC_A,		LD_A_D8,		CCF,
