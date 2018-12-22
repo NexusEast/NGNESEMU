@@ -205,11 +205,12 @@ public:
 	void ADD16(u16 data);
 	void ADDSPE8();
 
-	void SignedCheckCarry_Full8_Add(u8&reg, u8 amount);
-	void SignedCheckCarry_Half8_Add(u8&reg, u8 amount);
+	//void SignedCheckCarry_Full8_Add(u8&reg, s8 amount);
+	//void SignedCheckCarry_Half8_Add(u8&reg, s8 amount);
 
-	void SignedCheckCarry_Full8_Minus(u8&reg, u8 amount);
-	void SignedCheckCarry_Half8_Minus(u8&reg, u8 amount);
+	void SignedCheckCarry8(u8&reg, s8 amount);
+	void SignedCheckCarry8_Half(u8&reg, s8 amount);
+	//void SignedCheckCarry_Half8_Minus(u8&reg, s8 amount);
 
 
 	u8 ReadImmvalue8();

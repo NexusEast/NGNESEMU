@@ -399,28 +399,36 @@ void LR35902::ADD16(u16 data)
 void LR35902::ADDSPE8()
 {
 	Reg.PC.val++;
-	Reg.SP.val +=  (s8)Memory->Read(Reg.PC.val);
+	s8 memval = (s8)Memory->Read(Reg.PC.val);
+	u8 reg = (Reg.PC.val & 0xFF);
+	SignedCheckCarry8(reg, memval);
+	SignedCheckCarry8_Half(reg, memval);
+	Reg.SP.val += memval;
+	ResetFlag(N);
+	ResetFlag(Z);
 }
 
-void LR35902::SignedCheckCarry_Full8_Add(u8&reg, s8 amount)
+ 
+
+void LR35902::SignedCheckCarry8(u8&reg, s8 amount)
 {
-
+	// lazy way to handle signed check.
+	int res = reg + amount;
+	if (((res&0xF00) >> 8) != 0)
+	{
+		SetFlag(C);
+	}
 }
 
-void LR35902::SignedCheckCarry_Half8_Add(u8&reg, s8 amount)
+void LR35902::SignedCheckCarry8_Half(u8&reg, s8 amount)
 {
-
-}
-
-void LR35902::SignedCheckCarry_Full8_Minus(u8&reg, s8 amount)
-{
-
-}
-
-void LR35902::SignedCheckCarry_Half8_Minus(u8&reg, s8 amount)
-{
-
-}
+	// lazy way to handle signed check.
+	int res = reg + amount;
+	if (res & 0x10 != reg & 0x10)
+	{
+		SetFlag(H);
+	}
+} 
 
 u8 LR35902::ReadImmvalue8()
 {
