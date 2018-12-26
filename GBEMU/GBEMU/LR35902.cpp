@@ -12,12 +12,12 @@ void LR35902::Step()
 	{
 		return;
 	}
-	u8 opcode = Memory->Read(Reg.PC.val++);
+	u8 opcode = Memory->Read(++Reg.PC.val);
 	switch (opcode)
 	{
 	case (0xCB):
 	{ 
-		Decode_CB(Memory->Read(Reg.PC.val++));
+		Decode_CB(Memory->Read(++Reg.PC.val));
 	}
 	break;
 	default: 
@@ -432,44 +432,70 @@ void LR35902::SignedCheckCarry8_Half(u8&reg, s8 amount)
 
 u8 LR35902::ReadImmvalue8()
 {
-	return Memory->Read(Reg.PC.val++);
+	return Memory->Read(++Reg.PC.val);
 }
- 
 
-void LR35902::LD_R8_R8(u8 data, u8 &reg)
+/*
+LD reg, data	reg<-data
+*/
+void LR35902::LD_R8_R8(u8 &reg, u8 data)
 {
 	reg = data;
 }
 
-void LR35902::LD8D8(u8 &reg)
+void LR35902::LD_R8_IMM(u8 &reg)
 {
 	Reg.PC.val++;
 	u8 data = Memory->Read(Reg.PC.val);
-	LD_R8_R8(reg, data);
+	LD_R8_R8(data, reg);
 }
 
 void LR35902::LD_R16ADDR_A(u16 reg)
 {
-	Reg.AF.A = Memory->Read(reg);
+	Memory->Write(reg, Reg.AF.A); 
 }
  
 void LR35902::LD_A_R16ADDR(u16 reg)
 {
-	Memory->Write(reg, Reg.AF.A);
+	Reg.AF.A = Memory->Read(reg);
 }
 
+/*
+LD [HL+],A
+Store value in register A into byte pointed by HL and post-increment HL.
+Cycles: 2
+Bytes: 1
+Flags: None affected.
+*/
 void LR35902::LD_HL_P_A()
 {
 	LD_R16ADDR_A(Reg.HL.val);
 	Reg.HL.val++;
 }
-
+/*
+LD [HL-],A
+Store value in register A into byte pointed by HL and post-decrement HL.
+Cycles: 2
+Bytes: 1
+Flags: None affected.
+*/
 void LR35902::LD_HL_M_A()
 {
 	LD_R16ADDR_A(Reg.HL.val);
 	Reg.HL.val--;
 }
  
+void LR35902::LD_A_HLA_P()
+{
+	Reg.AF.A = Memory->Read(Reg.HL.val);
+	Reg.HL.val--;
+}
+
+void LR35902::LD_A_HLA_M()
+{
+	Memory->Write(Reg.HL.val, Reg.AF.A);
+}
+
 /*
 LD [HL],r8
 Store value in register r8 into byte pointed by register HL.
@@ -477,7 +503,7 @@ Cycles: 2
 Bytes: 1
 Flags: None affected.
 */
-void LR35902::LD_HLA_8(u8 reg)
+void LR35902::LD_HLA_R8(u8 reg)
 {
 	Memory->Write(Reg.HL.val, reg);
 }
@@ -491,7 +517,7 @@ Flags: None affected.
 */
 void LR35902::LD_HLADDR_N8()
 { 
-	LD_HLA_8(Memory->Read(Reg.PC.val++));
+	LD_HLA_R8(Memory->Read(++Reg.PC.val));
 }
 
 /*
@@ -504,6 +530,72 @@ Flags: None affected.
 void LR35902::LD_R8_HLA(u8&reg)
 {
 	reg = Memory->Read(Reg.HL.val);
+}
+
+/*
+LD [$FF00+n8],A
+Store value in register A into high RAM or I/O registers.
+The following synonym forces this encoding: LDH [$FF00+n8],A
+Cycles: 3
+Bytes: 2
+Flags: None affected.
+*/
+void LR35902::LD_FF00_IMM_A()// LD (0xFF00+imm),A
+{ 
+	Reg.PC.val++;
+	u8 imm = Memory->Read(Reg.PC.val);
+	Memory->Write(0xFF00 + imm, Reg.AF.A);
+}
+/*\
+LD [$FF00+C],A
+Store value in register A into high RAM or I/O registers.
+Cycles: 2
+Bytes: 1
+Flags: None affected.
+*/
+void LR35902::LD_FF00_C_A()
+{
+	Memory->Write( Memory->Read(0xFF00 + Reg.BC.C), Reg.AF.A);
+}
+
+void LR35902::LD_IMM16_A()
+{ 
+	u16 imm16 = Memory->Read16(++Reg.PC.val);
+	++Reg.PC.val;
+	Memory->Write(imm16, Reg.AF.A); 
+}
+
+
+ 
+
+void LR35902::LD_A_IMM16()
+{
+	Reg.AF.A = Memory->Read(Memory->Read16(++Reg.PC.val));
+	Reg.PC.val++;
+}
+
+void LR35902::LD_A_FF00_C()//ld $a, (0xFF00 + $c)
+{
+	Memory->Write((0xFF00 + Reg.BC.C), Reg.AF.A);
+}
+
+void LR35902::LD_A_FF00_IMM8()
+{
+	u8 imm8 = Memory->Read(++Reg.PC.val);
+	Memory->Write(0xFF00 + imm8, Reg.AF.A);
+}
+
+/*
+LD A,[$FF00+n8]
+Load value in register A from high RAM or I/O registers.
+The following synonym forces this encoding: LDH A,[$FF00+n8]
+Cycles: 3
+Bytes: 2
+Flags: None affected.
+*/
+void LR35902::LD_A_FF00_N8()
+{
+
 }
 
 void LR35902::CB(u8 opcode)
@@ -582,177 +674,179 @@ void LR35902::DATA8(u8 opcode)
 		LD_R16ADDR_A(Reg.BC.val);
 		break;
 	case LD_B_D8://0x06
-		LD8D8(Reg.BC.B);
+		LD_R8_IMM(Reg.BC.B);
 		break;
 	case LD_A_BC://0x0A
 		LD_A_R16ADDR(Reg.BC.val);
 		break;
 	case LD_C_D8://0x0E
-		LD8D8(Reg.BC.C);
+		LD_R8_IMM(Reg.BC.C);
 		break;
 	case LD_DE_A://0x12 
 		LD_R16ADDR_A(Reg.DE.val);
 		break;
 	case LD_D_D8://0x16
-		LD8D8(Reg.DE.D);
+		LD_R8_IMM(Reg.DE.D);
 		break;
 	case LD_A_DE://0x1A
 		LD_A_R16ADDR(Reg.DE.val);
 		break;
 	case LD_E_D8://0x1E
-		LD8D8(Reg.DE.E);
+		LD_R8_IMM(Reg.DE.E);
 		break;
-	case LD_HL_PLUS_A://0x22
+	case LD_HL_PLUS_A://0x22 
 		LD_HL_P_A();
 		break;
 	case LD_H_D8://
-		LD8D8(Reg.HL.H);
+		LD_R8_IMM(Reg.HL.H);
 		break;
-	case LD_A_HLA_PLUS://0x2A
-		LD_HL_P_A();
-		break;
+	case LD_A_HLA_PLUS://0x2A 
+			LD_A_HLA_P();
+			break;
 	case LD_L_D8://0x2E
-		LD8D8(Reg.HL.L);
+		LD_R8_IMM(Reg.HL.L);
 		break;
-	case LD_HL_MNUS_A://0x32
-		LD_HL_M_A();
+	case LD_HL_MNUS_A://0x32  
+		 LD_HL_M_A();
 		break;
 	case LD_HLA_D8://0x36
 		LD_HLADDR_N8();
 		break;
-	case LD_A_HLA_MNUS://0x3A
+	case LD_A_HLA_MNUS://0x3A 
+		LD_A_HLA_M();
+		break;
 	case LD_A_D8://0x3E
-		LD8D8(Reg.AF.A);
+		LD_R8_IMM(Reg.AF.A);
 		break;
 	case LD_B_B://0x40
 		break;
 	case LD_B_C://0x41 
-		LD_R8_R8(Reg.BC.B,Reg.BC.C);
+		LD_R8_R8(Reg.BC.C,Reg.BC.B);
 		break;
 	case LD_B_D://0x42
-		LD_R8_R8(Reg.BC.B, Reg.DE.D);
+		LD_R8_R8(Reg.DE.D, Reg.BC.B);
 		break;
 	case LD_B_E://0x43
-		LD_R8_R8(Reg.BC.B, Reg.DE.E);
+		LD_R8_R8(Reg.DE.E, Reg.BC.B);
 		break;
 	case LD_B_H://0x44
-		LD_R8_R8(Reg.BC.B, Reg.HL.H);
+		LD_R8_R8(Reg.HL.H, Reg.BC.B);
 		break;
 	case LD_B_L://0x45
-		LD_R8_R8(Reg.BC.B, Reg.HL.L);
+		LD_R8_R8(Reg.HL.L, Reg.BC.B);
 		break;
 	case LD_B_HLA://0x46
 		LD_R8_HLA(Reg.BC.B);
 		break;
 	case LD_B_A://0x47
-		LD_R8_R8(Reg.BC.B, Reg.AF.F);
+		LD_R8_R8(Reg.AF.F, Reg.BC.B);
 		break;
 	case LD_C_B://0x48
-		LD_R8_R8(Reg.BC.C, Reg.BC.B);
+		LD_R8_R8(Reg.BC.B, Reg.BC.C);
 		break;
 	case LD_C_C://0x49
 		break;
 	case LD_C_D://0x4A 
-		LD_R8_R8(Reg.BC.C, Reg.DE.D);
+		LD_R8_R8(Reg.DE.D, Reg.BC.C);
 		break;
 	case LD_C_E://0x4B
-		LD_R8_R8(Reg.BC.C, Reg.DE.E);
+		LD_R8_R8(Reg.DE.E, Reg.BC.C);
 		break;
 	case LD_C_H://0x4C
-		LD_R8_R8(Reg.BC.C, Reg.HL.H);
+		LD_R8_R8(Reg.HL.H, Reg.BC.C);
 		break;
 	case LD_C_L://0x4D
-		LD_R8_R8(Reg.BC.C, Reg.HL.L);
+		LD_R8_R8(Reg.HL.L, Reg.BC.C);
 		break;
 	case LD_C_HLA://0x4E
 		LD_R8_HLA(Reg.BC.C);
 		break;
 	case LD_C_A://0x4F
-		LD_R8_R8(Reg.BC.C, Reg.AF.A);
+		LD_R8_R8(Reg.AF.A, Reg.BC.C);
 		break;
 	case LD_D_B://0x50
-		LD_R8_R8(Reg.DE.D, Reg.BC.B);
+		LD_R8_R8(Reg.BC.B, Reg.DE.D);
 		break;
 	case LD_D_C://0x51
-		LD_R8_R8(Reg.DE.D, Reg.BC.C);
+		LD_R8_R8(Reg.BC.C, Reg.DE.D);
 		break;
 	case LD_D_D://0x52
 		break;
 	case LD_D_E://0x53 
-		LD_R8_R8(Reg.DE.D, Reg.DE.E);
+		LD_R8_R8(Reg.DE.E, Reg.DE.D);
 		break;
 	case LD_D_H://0x54
-		LD_R8_R8(Reg.DE.D, Reg.HL.H);
+		LD_R8_R8(Reg.HL.H, Reg.DE.D);
 		break;
 	case LD_D_L://0x55
-		LD_R8_R8(Reg.DE.D, Reg.HL.L);
+		LD_R8_R8(Reg.HL.L, Reg.DE.D);
 		break;
 	case LD_D_HLA://0x56
 		LD_R8_HLA(Reg.DE.D);
 		break;
 	case LD_D_A://0x57
-		LD_R8_R8(Reg.DE.D, Reg.AF.A);
+		LD_R8_R8(Reg.AF.A, Reg.DE.D);
 		break;
 	case LD_E_B://0x58
-		LD_R8_R8(Reg.DE.E, Reg.BC.B);
+		LD_R8_R8(Reg.BC.B, Reg.DE.E);
 		break;
 	case LD_E_C://0x59
-		LD_R8_R8(Reg.DE.E, Reg.BC.C);
+		LD_R8_R8(Reg.BC.C, Reg.DE.E);
 		break;
 	case LD_E_D://0x5A
-		LD_R8_R8(Reg.DE.E, Reg.DE.D);
+		LD_R8_R8(Reg.DE.D, Reg.DE.E);
 		break;
 	case LD_E_E://0x5B
 		break;
 	case LD_E_H://0x5C
-		LD_R8_R8(Reg.DE.E, Reg.HL.H);
+		LD_R8_R8(Reg.HL.H, Reg.DE.E);
 		break;
 	case LD_E_L://0x5D
-		LD_R8_R8(Reg.DE.E, Reg.HL.L);
+		LD_R8_R8(Reg.HL.L, Reg.DE.E);
 		break;
 	case LD_E_HLA://0x5E
 		LD_R8_HLA(Reg.DE.E);
 		break;
 	case LD_E_A://0x5F
-		LD_R8_R8(Reg.DE.E, Reg.AF.A);
+		LD_R8_R8(Reg.AF.A, Reg.DE.E);
 		break;
 	case LD_H_B://0x60
-		LD_R8_R8(Reg.HL.H, Reg.BC.B);
+		LD_R8_R8(Reg.BC.B, Reg.HL.H);
 		break;
 	case LD_H_C://0x61
-		LD_R8_R8(Reg.HL.H, Reg.BC.C);
+		LD_R8_R8(Reg.BC.C, Reg.HL.H);
 		break;
 	case LD_H_D://0x62
-		LD_R8_R8(Reg.HL.H, Reg.DE.D);
+		LD_R8_R8(Reg.DE.D, Reg.HL.H);
 		break;
 	case LD_H_E://0x63
-		LD_R8_R8(Reg.HL.H, Reg.DE.E);
+		LD_R8_R8(Reg.DE.E, Reg.HL.H);
 		break;
 	case LD_H_H://0x64
 		break;
 	case LD_H_L://0x65 
-		LD_R8_R8(Reg.HL.H, Reg.HL.L);
+		LD_R8_R8(Reg.HL.L, Reg.HL.H);
 		break;
 	case LD_H_HLA://0x66
 		LD_R8_HLA(Reg.HL.H);
 		break;
 	case LD_H_A://0x67
-		LD_R8_R8(Reg.HL.H, Reg.AF.F);
+		LD_R8_R8(Reg.AF.F, Reg.HL.H);
 		break;
 	case LD_L_B://0x68
-		LD_R8_R8(Reg.HL.L, Reg.BC.B);
+		LD_R8_R8(Reg.BC.B, Reg.HL.L);
 		break;
 	case LD_L_C://0x69
-		LD_R8_R8(Reg.HL.L, Reg.BC.C);
+		LD_R8_R8(Reg.BC.C, Reg.HL.L);
 		break;
 	case LD_L_D://0x6A
-		LD_R8_R8(Reg.HL.L, Reg.DE.D);
+		LD_R8_R8(Reg.DE.D, Reg.HL.L);
 		break;
 	case LD_L_E://0x6B
-		LD_R8_R8(Reg.HL.L, Reg.DE.E);
+		LD_R8_R8(Reg.DE.E, Reg.HL.L);
 		break;
 	case LD_L_H://0x6C
-		LD_R8_R8(Reg.HL.L, Reg.HL.H);
+		LD_R8_R8(Reg.HL.H, Reg.HL.L);
 		break;
 	case LD_L_L://0x6D 
 		break;
@@ -760,46 +854,46 @@ void LR35902::DATA8(u8 opcode)
 		LD_R8_HLA(Reg.HL.L);
 		break;
 	case LD_L_A://0x6F
-		LD_R8_R8(Reg.HL.L, Reg.AF.F);
+		LD_R8_R8(Reg.AF.F, Reg.HL.L);
 		break;
 	case LD_HLA_B://0x70
-		LD_HLA_8(Reg.BC.B);
+		LD_HLA_R8(Reg.BC.B);
 		break;
 	case LD_HLA_C://0x71
-		LD_HLA_8(Reg.BC.C);
+		LD_HLA_R8(Reg.BC.C);
 		break;
 	case LD_HLA_D://0x72
-		LD_HLA_8(Reg.DE.D);
+		LD_HLA_R8(Reg.DE.D);
 		break;
 	case LD_HLA_E://0x73
-		LD_HLA_8(Reg.DE.E);
+		LD_HLA_R8(Reg.DE.E);
 		break;
 	case LD_HLA_H://0x74
-		LD_HLA_8(Reg.HL.H);
+		LD_HLA_R8(Reg.HL.H);
 		break;
 	case LD_HLA_L://0x75
-		LD_HLA_8(Reg.HL.L);
+		LD_HLA_R8(Reg.HL.L);
 		break;
 	case LD_HLA_A://0x77
-		LD_HLA_8(Reg.AF.F);
+		LD_HLA_R8(Reg.AF.F);
 		break;
 	case LD_A_B://0x78
-		LD_R8_R8(Reg.AF.A, Reg.BC.B);
+		LD_R8_R8(Reg.BC.B, Reg.AF.A);
 		break;
 	case LD_A_C://0x79
-		LD_R8_R8(Reg.AF.A, Reg.BC.C);
+		LD_R8_R8(Reg.BC.C, Reg.AF.A);
 		break;
 	case LD_A_D://0x7A
-		LD_R8_R8(Reg.AF.A, Reg.DE.D);
+		LD_R8_R8(Reg.DE.D, Reg.AF.A);
 		break;
 	case LD_A_E://0x7B
-		LD_R8_R8(Reg.AF.A, Reg.DE.E);
+		LD_R8_R8(Reg.DE.E, Reg.AF.A);
 		break;
 	case LD_A_H://0x7C
-		LD_R8_R8(Reg.AF.A, Reg.HL.H);
+		LD_R8_R8(Reg.HL.H, Reg.AF.A);
 		break;
 	case LD_A_L://0x7D
-		LD_R8_R8(Reg.AF.A, Reg.HL.L);
+		LD_R8_R8(Reg.HL.L, Reg.AF.A);
 		break;
 	case LD_A_HLA://0x7E
 		LD_R8_HLA(Reg.AF.A);
@@ -807,11 +901,23 @@ void LR35902::DATA8(u8 opcode)
 	case LD_A_A://0x7F
 		break;
 	case LDH_A8ADR_A://0xE0
+		LD_FF00_IMM_A();
+		break;
 	case LD_CADR_A://0xE2
+		LD_FF00_C_A();
+		break;
 	case LD_A16ADR_A://0xEA
-	case LDH_A_A8ADR://0xF0
+		LD_IMM16_A();
+		break;
+	case LDH_A_A8ADR://0xF0 
+		LD_A_FF00_IMM8();
+		break;
 	case LD_A_CADR://0xF2
+		LD_A_FF00_C();
+		break;
 	case LD_A_A16ADR://0xFA
+		LD_A_IMM16();
+		break;
 	default:
 		break;
 	}
